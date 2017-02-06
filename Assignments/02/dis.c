@@ -203,6 +203,7 @@ newprog(Prog *p, Modlink *m) // New user process
 	// Inherit quanta from parent
 	n->quanta = p->quanta;
 
+	/* Debugging tools
 	Prog* head = isched.head;
 	Prog* tail = isched.tail;
 	while(head->next != nil){
@@ -212,8 +213,9 @@ newprog(Prog *p, Modlink *m) // New user process
 		progquanta(head,1);
 		head = head->next;
 	}
-	//print("pid of new process: %d\n", n->pid);
-	//print("\tpid of parent process: %d\n", p->pid);
+	print("pid of new process: %d\n", n->pid);
+	print("\tpid of parent process: %d\n", p->pid); 
+	*/
 
 	return n;
 }
@@ -709,6 +711,24 @@ addrun(Prog *p) // Transition from blocked to ready
 		p->addrun(p);
 		return;
 	}
+	/* */
+	p->state = Pready;
+	p->link = nil;
+
+	if(isched.runhd == nil) { // If no element
+		isched.runhd = p;
+		isched.runtl = p;
+	} else if (isched.runhd == isched.runtl) { // If only one element
+		isched.runhd->link = p;
+		isched.runtl = p;
+	} else { // If more than one element
+		Prog *s = isched.runhd;
+		Prog *l = s->link;
+		s->link = p;
+		p->link = l;
+	}
+	/* */
+	/* Old code 
 	p->state = Pready;
 	p->link = nil;
 	if(isched.runhd == nil)
@@ -716,7 +736,8 @@ addrun(Prog *p) // Transition from blocked to ready
 	else
 		isched.runtl->link = p;
 
-	isched.runtl = p;
+	isched.runtl = p; 
+	/* */
 }
 
 Prog*
@@ -1070,6 +1091,8 @@ vmachine(void *a)
 
 		r = isched.runhd;
 		if(r != nil) {
+			// "The best debugger is print" - BLS
+			//print("The quanta for the current process is: %d\n",r->quanta);
 			o = r->osenv;
 			up->env = o;
 
@@ -1077,6 +1100,8 @@ vmachine(void *a)
 			r->xec(r);
 			FPsave(&o->fpu);
 
+			// Change the quanta
+			iquanta(r);
 			if(isched.runhd != nil) // If there is something to schedule
 				if(r == isched.runhd) // The one that I'm running has to be the head of the list.
 					if(isched.runhd != isched.runtl) { // If there is more than one thing in the list
@@ -1084,10 +1109,13 @@ vmachine(void *a)
 						r->link = nil;
 						isched.runtl->link = r;
 						isched.runtl = r;
+
+						
 					}
 
 			up->env = &up->defenv;
 		}
+		// Make sure to GC even if the system is not running any new things
 		if(isched.runhd != nil)
 			if((++gccounter&0xFF) == 0 || memlow()) {
 				gcbusy++;
@@ -1188,7 +1216,6 @@ disinit(void *a)
 	isched.idle = 1;
 	poperror();
 	vmachine(nil);
-
 }
 
 
@@ -1205,3 +1232,12 @@ pushrun(Prog *p)
 		isched.runtl = p;
 }
 
+int 
+iquanta(Prog *p)
+{
+	int q = p->quanta;
+
+	q += q / 2;
+
+	return progquanta(p, q);	
+}

@@ -1483,6 +1483,8 @@ save:
 	telldbg(env->debug, buf);
 	poperror();
 	closedbgctl(env->debug, p);
+
+	print("Called\n");
 }
 
 Dev progdevtab = {
@@ -1504,8 +1506,14 @@ Dev progdevtab = {
 	progwstat
 };
 
-void
-progquanta(Prog* p, int nq)
+int
+progquanta(Prog* p, int nq) // Places an upper bound of 10000 and lower bound of 100
 {
+	if(nq < 100||nq > 10000)
+		return -1;
+
 	p->quanta = nq;
+
+	return 0;
 }
+

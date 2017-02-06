@@ -404,7 +404,8 @@ extern	int		csendalt(Channel*, void*, Type *, int);
 extern	Prog*		currun(void);
 extern	void		dbgexit(Prog*, int, char*);
 extern	void		dbgxec(Prog*);
-extern  void		progquanta(Prog*, int); // Change quanta
+extern	int		progquanta(Prog*, int); // Change quanta
+extern	int		iquanta(Prog*); // Increase quanta
 extern	void		delprog(Prog*, char*);
 extern	Prog*		delrun(int);
 extern	void		delrunq(Prog*);
