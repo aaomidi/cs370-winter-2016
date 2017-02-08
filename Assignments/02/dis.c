@@ -200,7 +200,7 @@ newprog(Prog *p, Modlink *m) // New user process
 	on->errstr = on->errbuf0;
 	on->syserrstr = on->errbuf1;
 
-	// Inherit quanta from parent
+	// Inherit quanta from parent Assignment 2 Part 1
 	n->quanta = p->quanta;
 
 	/* Debugging tools
@@ -711,33 +711,36 @@ addrun(Prog *p) // Transition from blocked to ready
 		p->addrun(p);
 		return;
 	}
-	/* */
-	p->state = Pready;
+
 	p->link = nil;
 
-	if(isched.runhd == nil) { // If no element
-		isched.runhd = p;
+	if(p->state == Palt || p->state == Psend || p->state == Precv) { // If the process is blocked
+		p->state = Pready;
+		p->link = nil;
+		if(isched.runhd == nil)
+			isched.runhd = p;
+		else
+			isched.runtl->link = p;
+
 		isched.runtl = p;
-	} else if (isched.runhd == isched.runtl) { // If only one element
-		isched.runhd->link = p;
-		isched.runtl = p;
-	} else { // If more than one element
-		Prog *s = isched.runhd;
-		Prog *l = s->link;
-		s->link = p;
-		p->link = l;
+	} else {
+		p->state = Pready;
+
+		if(isched.runhd == nil) { // If no element
+			isched.runhd = p;
+			isched.runtl = p;
+		} else if (isched.runhd == isched.runtl) { // If only one element
+			isched.runhd->link = p;
+			isched.runtl = p;
+		} else { // If more than one element
+			//print("PID of Head: %d\n\tPID of 2nd: %d\n\tPID of next to add: %d\n",isched.runhd->pid,isched.runhd->link->pid,p->pid);
+			Prog *s = isched.runhd;
+			Prog *l = s->link;
+			p->link = l;
+			s->link = p;
+			//print("\tAFTER CHANGE PID of Head: %d\n\tPID of 2nd: %d\n\tPID of next to add: %d\n",isched.runhd->pid,isched.runhd->link->pid,isched.runhd->link->link->pid);
+		}
 	}
-	/* */
-	/* Old code 
-	p->state = Pready;
-	p->link = nil;
-	if(isched.runhd == nil)
-		isched.runhd = p;
-	else
-		isched.runtl->link = p;
-
-	isched.runtl = p; 
-	/* */
 }
 
 Prog*
@@ -1101,17 +1104,20 @@ vmachine(void *a)
 			FPsave(&o->fpu);
 
 			// Change the quanta
-			iquanta(r);
-			if(isched.runhd != nil) // If there is something to schedule
-				if(r == isched.runhd) // The one that I'm running has to be the head of the list.
+			if(isched.runhd != nil) { // If there is something to schedule
+				//print("X\n");
+				if(r == isched.runhd) { // The one that I'm running has to be the head of the list.
+					//print("Y\n");
 					if(isched.runhd != isched.runtl) { // If there is more than one thing in the list
 						isched.runhd = r->link;
 						r->link = nil;
 						isched.runtl->link = r;
 						isched.runtl = r;
-
 						
 					}
+					iquanta(r); // The process wasn't blocked.
+				}
+			}
 
 			up->env = &up->defenv;
 		}

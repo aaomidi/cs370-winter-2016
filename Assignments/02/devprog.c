@@ -53,7 +53,8 @@ enum
 	CMkillgrp,
 	CMrestricted,
 	CMexceptions,
-	CMprivate
+	CMprivate,
+	CMquanta
 };
 
 static
@@ -63,6 +64,7 @@ Cmdtab progcmd[] = {
 	CMrestricted, "restricted", 1,
 	CMexceptions, "exceptions", 2,
 	CMprivate, "private",	1,
+	CMquanta, "quanta", 2,
 };
 
 enum
@@ -842,26 +844,28 @@ progread(Chan *c, void *va, long n, vlong offset)
 		p = progpid(PID(c->qid));
 		if(p == nil || p->state == Pexiting || p->R.M == H) {
 			release();
-			snprint(up->genbuf, sizeof(up->genbuf), "%8lud %8d %10s %s %10s %5dK %s",
+			snprint(up->genbuf, sizeof(up->genbuf), "%8lud %8d %10s %s %10s %5dK %s %d",
 				PID(c->qid),
 				0,
 				eve,
 				progtime(0, timebuf, timebuf+sizeof(timebuf)),
 				progstate[Pexiting],
 				0,
-				"[$Sys]");
+				"[$Sys]",
+				0);
 			return readstr(offset, va, n, up->genbuf);
 		}
 		modstatus(&p->R, mbuf, sizeof(mbuf));
 		o = p->osenv;
-		snprint(up->genbuf, sizeof(up->genbuf), "%8d %8d %10s %s %10s %5dK %s",
+		snprint(up->genbuf, sizeof(up->genbuf), "%8d %8d %10s %s %10s %5dK %s %d",
 			p->pid,
 			p->group!=nil? p->group->id: 0,
 			o->user,
 			progtime(p->ticks, timebuf, timebuf+sizeof(timebuf)),
 			progstate[p->state],
 			progsize(p),
-			mbuf);
+			mbuf,
+			p->quanta);
 		release();
 		return readstr(offset, va, n, up->genbuf);
 	case Qwait:
@@ -1023,7 +1027,7 @@ progwrite(Chan *c, void *va, long n, vlong offset)
 	char buf[512];
 	Progctl *ctl;
 	char *b;
-	int i, pc;
+	int i, pc, quanta;
 	Cmdbuf *cb;
 	Cmdtab *ct;
 
@@ -1072,6 +1076,11 @@ progwrite(Chan *c, void *va, long n, vlong offset)
 			break;
 		case CMprivate:
 			p->group->flags |= Pprivatemem;
+			break;
+		case CMquanta:
+			quanta = atoi(cb->f[1]);
+			print("Changing the quanta of process %d to %d\n", p->pid, quanta);
+			progquanta(p, quanta);
 			break;
 		}
 		poperror();
