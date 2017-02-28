@@ -211,3 +211,7 @@ addrun(Prog *p) // Transition from blocked to ready
 ```
 
 This is a hacky solution but it works.
+
+One last thing I noticed. About the maximum and minimum quanta:
+- If the quanta is too small the overhead of context switching becomes larger than the time the program can run. In my testing I found out I shouldn't go below ~100.
+- If the quanta is too big, you effectively have a batch system with just no priority and jobs going in as FIFO. The maximum quanta however depends in this case on the hardware of the system its running on. On my machine I really didnt notice anything until around ~30000.
